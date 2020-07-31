@@ -1,25 +1,10 @@
-#' getCellID
-#' @description returns the column name where the cell identifiers are be stored
-#' @param x a SpatialExperiment object instance
-#' @aliases getCellID
-#' @return the cellID
-#' @export
-#'
-#' @examples
-#' example(SpatialExperiment)
-#' getCellID(se)
-setMethod(f="getCellID", signature="SpatialExperiment", function(x)
-{
-    return(x@int_cellID)
-})
-
 #' spatialCoords-getter
 #' @description a getter method which returns the spatial coordinates previously
 #' stored in a SpatialExperiment class object.
 #' @param x A SpatialExperiment class object.
 #'
 #' @return a DataFrame within the spatial coordinates.
-#' 
+#'
 #' @export
 #' @aliases spatialCoords
 #' @examples
@@ -27,16 +12,18 @@ setMethod(f="getCellID", signature="SpatialExperiment", function(x)
 #' spatialCoords(se)
 setMethod(f="spatialCoords", signature="SpatialExperiment", function(x)
 {
-    return(int_colData(x)[, x@int_spcIdx])
+    return(int_colData(x)$spatial)
+    
 })
 
 #' spatialCoords-setter
-#' @description a setter method which sets/replaces the spatial coordinate in a 
+#' @description a setter method which sets/replaces the spatial coordinate in a
 #' SpatialExperiment class object.
 #' @param x a SpatialExperiment class object
 #' @param value a DataFrame with the new spatial coordinates to set.
 #' @return none
 #' @importFrom SingleCellExperiment int_colData int_colData<-
+#' @importFrom S4Vectors nrow SimpleList
 #' @importFrom methods is
 #' @aliases spatialCoords<-
 #' @export
@@ -46,54 +33,27 @@ setMethod(f="spatialCoords", signature="SpatialExperiment", function(x)
 #'         colnames(fakeFishCoords) <- c("MyCell_ID", "Irrelevant", "x", "y")
 #' spatialCoords(se) <- fakeFishCoords
 #' spatialCoords(se)
-setReplaceMethod(f="spatialCoords", signature="SpatialExperiment", 
-                function(x, value=DataFrame())
+setReplaceMethod(f="spatialCoords", signature="SpatialExperiment", function(x, value=DataFrame())
 {
-    if(is(value, "data.frame")) 
+    # stopifnot(!sum(S4Vectors::isEmpty(value)))
+    if(!is(value, "DataFrame")) 
     {
         value <- DataFrame(value)
     }
-    if(x@int_cellID != "rownames")
+    if(sum(dim(value)==c(0,0))<2)
     {
-        if(!(x@int_cellID %in% colnames(value)))
-        {
-            stop(paste0("Spatial coordinates haven't the defined cellColID. ",
-                    "Expected: ", x@int_cellID))
-        }
-        dm <- dim(int_colData(x))
-        ## Case of base SingleCellExperiment 
-        ## (minimal dimensions are #ngenes x 3 with empty values)
-        if(dm[2] == 3) 
-        {
-            int_colData(x) <- cbind(int_colData(x),value)
-            x@int_spcIdx <- base::which(colnames(int_colData(x)) %in% 
-                                            colnames(value))
-        } else { ## case of already present spatial coordinates
-            cDataIdx1 <- which(colnames(value) %in% colnames(int_colData(x)))
-            if(length(cDataIdx1) == 0)
-            {
-                stop("Spatial coordinates colnames differ from the stored ones")
-            } else {
-                cDataIdx <- match(value[[x@int_cellID]], 
-                                int_colData(x)[[x@int_cellID]])
-                for (col in colnames(value))
-                {
-                    colidx <- base::which(colnames(int_colData(x)) == col)
-                    validx <- base::which(colnames(value) == col)
-                    int_colData(x)[cDataIdx, colidx] <- value[,validx]
-                }
-            }
-        }
+        int_colData(x)$spatial <- value
     } else {
-        stop("Please specify a different identifier")
+        int_colData(x)$spatial <- DataFrame(row.names=colnames(x))
     }
     
+
     return(x)
 })
 
 
 #' spatialCoordsNames-getter
-#' @description getter method for the spatial coordinates names in a 
+#' @description getter method for the spatial coordinates names in a
 #' SpatialExperiment class object.
 #' @param x a SpatialExperiment class object.
 #'
@@ -105,5 +65,5 @@ setReplaceMethod(f="spatialCoords", signature="SpatialExperiment",
 #' spatialCoordsNames(se)
 setMethod(f="spatialCoordsNames", signature="SpatialExperiment", function(x)
 {
-    return(colnames(int_colData(x)[x@int_spcIdx]))
+    return(colnames(int_colData(x)$spatial))
 })
